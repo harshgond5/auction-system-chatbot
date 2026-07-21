@@ -1,8 +1,3 @@
-# data.py - Complete AuctioHub Platform Database
-
-# ==========================================
-# 1. PLATFORM METRICS
-# ==========================================
 PLATFORM_DB = {
     "platform_name": "AuctioHub",
     "tagline": "India's Premier AI-Powered Smart Auction Platform",
@@ -23,9 +18,6 @@ PLATFORM_DB = {
     "helpline": "+91 1800-AUCTION"
 }
 
-# ==========================================
-# 2. UNIFIED USER PROFILE (For Dynamic Intent)
-# ==========================================
 DEFAULT_USER = {
     "id": 1,
     "name": "Active User",
@@ -75,9 +67,6 @@ DEFAULT_USER = {
     ]
 }
 
-# ==========================================
-# 3. EXPANDED AUCTION CATALOG
-# ==========================================
 featuredAuctions = [
     {
         "id": 1,
@@ -185,9 +174,7 @@ featuredAuctions = [
     }
 ]
 
-# ==========================================
-# 4. FRAUD PROTECTION METRICS
-# ==========================================
+
 fraudAnalysis = {
     "overallRisk": "Low",
     "confidence": 96,
