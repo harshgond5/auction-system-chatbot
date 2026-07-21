@@ -3,7 +3,7 @@ from openai import OpenAI
 import json
 import numpy as np
 from PIL import Image
-from data import PLATFORM_DB, BUYER_DB, SELLER_DB
+from data import PLATFORM_DB, DEFAULT_USER, featuredAuctions, fraudAnalysis
 
 TF_AVAILABLE = False
 try:
@@ -13,25 +13,18 @@ try:
 except ImportError:
     pass
 
-# ==========================================
-# 1. UI Configuration
-# ==========================================
-st.set_page_config(page_title="Smart Auction AI", page_icon="🔨", layout="centered")
 
-# ==========================================
-# 2. Cached Deep Learning Models
-# ==========================================
+st.set_page_config(page_title="AuctioHub", page_icon="🔨", layout="centered")
+
+ 
 @st.cache_resource
 def load_vision_model():
-    # Load MobileNetV2 - Fast and efficient for web apps
     return tf.keras.applications.MobileNetV2(weights='imagenet')
 
-# ==========================================
-# 3. Sidebar: Tools & Image Processor
-# ==========================================
+ 
 with st.sidebar:
-    st.title("⚙️ Auction Tools")
-    active_role = st.selectbox("Switch Profile:", ["Buyer", "Seller"])
+    st.title("⚙️ AuctioHub Tools")
+    st.caption("Logged in as: **Active User**")
     st.divider()
     
     st.markdown("### 🖼️ Image Recognition")
@@ -41,17 +34,13 @@ with st.sidebar:
         image = Image.open(uploaded_file).resize((224, 224))
         st.image(image, use_column_width=True)
         
-        # --- SAFE VISION LOGIC ---
         if TF_AVAILABLE:
             if st.button("Identify Object"):
                 with st.spinner("Analyzing image..."):
                     model = load_vision_model()
-                    # Prepare image for the model
                     img_array = tf.keras.preprocessing.image.img_to_array(image)
                     img_array = np.expand_dims(img_array, axis=0)
-                    img_array = tf.keras.applications.mobilenet_v2.preprocess_input(img_array)
-                    
-                    # Predict
+                    img_array = tf.keras.applications.mobilenet_v2.preprocess_input(img_array)    
                     preds = model.predict(img_array)
                     decoded = tf.keras.applications.mobilenet_v2.decode_predictions(preds, top=1)[0]
                     label = decoded[0][1].replace('_', ' ').title()
@@ -59,35 +48,47 @@ with st.sidebar:
                     
                     st.success(f"Detected: **{label}** ({confidence:.1f}%)")
         else:
-            st.warning("⚠️ Vision Engine: Not available in Cloud Mode. Please view local demo for full functionality.")
-# ==========================================
-# 4. Main Chat Logic
-# ==========================================
-# Initialize Session State
+            st.info("💡 **Vision Engine:** Running in Cloud Mode.")
+
+ 
 if "messages" not in st.session_state:
-    st.session_state.messages = [{"role": "assistant", "content": "👋 Welcome to Smart Auction AI! How can I help you today?"}]
+    st.session_state.messages = [{"role": "assistant", "content": "👋 Welcome to AuctioHub! Are you looking to place a bid on an item or list something new to sell today?"}]
 
-st.title("🔨 Smart Auction AI")
+st.title("🔨 AuctioHub")
 
-# Display Chat
+# Display Chat History
 for message in st.session_state.messages:
     with st.chat_message(message["role"]):
         st.markdown(message["content"])
 
-# Chat Input
-if user_query := st.chat_input("Message the AI Concierge..."):
-    # Append User Message
+# Chat Input & Dynamic Intent Processing
+if user_query := st.chat_input("Ask about bidding, selling, or platform items..."):
     st.session_state.messages.append({"role": "user", "content": user_query})
     with st.chat_message("user"):
         st.markdown(user_query)
 
-    # API Logic
     try:
         api_key = st.secrets["GROQ_API_KEY"]
         client = OpenAI(api_key=api_key, base_url="https://api.groq.com/openai/v1")
         
-        sys_inst = f"""You are an expert auction assistant. Platform Data: {json.dumps(PLATFORM_DB)}. 
-        User: {json.dumps(BUYER_DB if active_role == 'Buyer' else SELLER_DB)}"""
+        # System instructions allowing the AI to interpret buyer or seller intent dynamically
+        sys_inst = f"""You are an expert AI concierge and assistant for 'AuctioHub'. 
+        
+        PLATFORM METRICS:
+        {json.dumps(PLATFORM_DB, indent=2)}
+        
+        AVAILABLE AUCTIONS CATALOG:
+        {json.dumps(featuredAuctions, indent=2)}
+        
+        USER PROFILE:
+        {json.dumps(DEFAULT_USER, indent=2)}
+        
+        Instructions:
+        - Analyze the user's query to automatically determine their intent (whether they want to **BUY** an item, **SELL/list** an item, check their wallet balance, or review active bids/listings).
+        - NEVER use a personal name. 
+        - Address the user strictly as **"Bidder"** if their intent involves buying, browsing, or checking their wallet balance.
+        - Address the user strictly as **"Auctioneer"** if their intent involves selling, listing items, or checking their payout balance.
+        """
         
         api_messages = [{"role": "system", "content": sys_inst}] + st.session_state.messages
         
